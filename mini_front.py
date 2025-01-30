@@ -70,7 +70,8 @@ def get_generated_query(question, archetype='doc_ddl', k=3, model_id='amazon.nov
             'archetype': archetype,
             'return_prompt': False,
             'model_id': model_id,
-            'k': k
+            'k_doc': 3,
+            'k_ddl': k
         }
 
         response = requests.get(generate_query, json=params, headers=headers)
@@ -133,14 +134,21 @@ def main():
             if user_question:
                 with st.spinner("🕵️‍♀️ Finding your answer..."):
                     try:
-                        start_time = time.time()  # Start the timer
-                        query = get_generated_query(user_question)
-                        execution_result = query_executor.execute(query)
-                        end_time = time.time()  # End the timer
+                        attempts = 0
+                        success = False
+                        ks = [3, 5, 8]
+                        while attempts < 3 and not success:
+                            start_time = time.time()  # Start the timer
+                            query = get_generated_query(user_question, k=ks[attempts])
+                            execution_result = query_executor.execute(query)
+                            end_time = time.time()  # End the timer
+                            attempts += 1
+                            if 'error' not in execution_result:
+                                success = True
                         
                         query_generation_time = end_time - start_time
 
-                        if query and execution_result:
+                        if query and execution_result and success:
                             st.success("✅ Here's what we found:")
                             
                             with st.expander("🔍 View the technical details"):
@@ -150,17 +158,20 @@ def main():
                             df = pd.DataFrame(execution_result['rows'], columns=execution_result['columns'])
                             st.dataframe(df, use_container_width=True)
 
-                            col1, col2 = st.columns(2)
+                            col1, col2, col3 = st.columns(3)
                             with col1:
                                 st.info(f"⏱️ Time to find answer: {query_generation_time:.2f} seconds")
                             with col2:
                                 st.info(f"📈 Found {execution_result['row_count']} results in {execution_result['execution_time']:.2f} seconds")
+                            with col3:
+                                st.info(f"🔄 Attempts taken: {attempts}")
                             
                             if 'LIMIT' in query.upper():
                                 st.info(f"ℹ️ Note: We've limited the results to {len(df)} item{'s' if len(df) != 1 else ''}. There may be more data available.")
 
                         else:
                             st.error("We're sorry, but we couldn't find an answer to your question. Could you try rephrasing it?")
+                            st.info(f"🔄 Attempts taken: {attempts}")
                             if query:
                                 with st.expander("🐛 Technical details"):
                                     st.code(query, language="sql")
