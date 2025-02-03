@@ -137,12 +137,16 @@ def main():
                         attempts = 0
                         success = False
                         ks = [3, 5, 8]
+                        queries_attempted = []  # Store queries for each attempt
+
                         while attempts < 3 and not success:
                             start_time = time.time()  # Start the timer
                             query = get_generated_query(user_question, k=ks[attempts])
                             execution_result = query_executor.execute(query)
                             end_time = time.time()  # End the timer
                             attempts += 1
+                            queries_attempted.append((attempts, ks[attempts-1], query))
+
                             if 'error' not in execution_result:
                                 success = True
                         
@@ -152,7 +156,10 @@ def main():
                             st.success("✅ Here's what we found:")
                             
                             with st.expander("🔍 View the technical details"):
-                                st.code(query, language="sql")
+                                st.subheader("📜 SQL Queries for Each Attempt:")
+                                for attempt_num, k_value, attempted_query in queries_attempted:
+                                    st.text(f"Attempt {attempt_num} (k={k_value}):")
+                                    st.code(attempted_query, language="sql")
 
                             st.subheader("📊 Results:")
                             df = pd.DataFrame(execution_result['rows'], columns=execution_result['columns'])
