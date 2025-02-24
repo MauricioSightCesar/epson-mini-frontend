@@ -83,14 +83,27 @@ class DBConnectionManager(metaclass=SingletonMeta):
             self.logger.info("SSH tunnel closed.")
 
 class ExecuteQuery:
-    def __init__(self, db_connection: pymysql.connections.Connection, logger: logging.Logger):
-        self.connection = db_connection
+    def __init__(self, db_manager: DBConnectionManager, logger: logging.Logger):
+        self.db_manager = db_manager
         self.logger = logger
 
+    def _ensure_connection(self):
+        """Check if the database connection is alive. If not, reconnect."""
+        try:
+            with self.db_manager.get_connection().cursor() as cursor:
+                cursor.execute("SELECT 1")  # Simple query to check connection
+        except (pymysql.MySQLError, pymysql.OperationalError) as e:
+            # self.logger.warning(f"Database connection lost: {e}. Attempting to reconnect...")
+            self.db_manager.close()  # Close current connection
+            self.db_manager._initialize_connection()  # Re-establish connection
+
     def execute(self, query: str) -> Dict[str, Any]:
+        """Execute a query after ensuring the connection is active."""
+        self._ensure_connection()  # Check and reconnect if needed
+
         try:
             start_time = time.time()
-            with self.connection.cursor() as cursor:
+            with self.db_manager.get_connection().cursor() as cursor:
                 cursor.execute(query)
                 rows = cursor.fetchall()
                 columns = [desc[0] for desc in cursor.description]
