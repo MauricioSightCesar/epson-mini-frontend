@@ -137,14 +137,14 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def get_generated_query(question, archetype='doc_ddl', k=3, model_id='amazon.nova-pro-v1:0'):
+def get_generated_query(question, archetype='doc_ddl', k=8, model_id='amazon.nova-pro-v1:0'):
     try: 
         params = {
             'question': question,
             'archetype': archetype,
             'return_prompt': False,
             'model_id': model_id,
-            'k_doc': 3,
+            'k_doc': 5,
             'k_ddl': k
         }
 
@@ -164,8 +164,7 @@ def get_generated_query(question, archetype='doc_ddl', k=3, model_id='amazon.nov
 
 def main():
     db_manager = DBConnectionManager(logger=logger)
-    connection = db_manager.get_connection()
-    query_executor = ExecuteQuery(connection, logger=logger)
+    query_executor = ExecuteQuery(db_manager, logger=logger)
 
     st.markdown("""
     <style>
@@ -235,7 +234,7 @@ def main():
                 try:
                     attempts = 0
                     success = False
-                    ks = [3, 5, 8]
+                    ks = [8]
                     queries_attempted = []  # Store queries for each attempt
 
                     while attempts < 3 and not success:
@@ -282,8 +281,9 @@ def main():
                             with st.expander("🐛 Technical details"):
                                 st.code(query, language="sql")
                 except Exception as e:
-                    st.error("We're sorry, but something went wrong. Please try again later.")
-                    st.exception(e)
+                    st.error("We're sorry, but something went wrong. Please try again.")
+                    with open('error_log.csv', 'a') as f:
+                        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')},{user_question},{e}\n")
         else:
             st.warning("Please enter a question to get started.")
 
