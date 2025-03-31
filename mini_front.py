@@ -260,8 +260,9 @@ def get_results(query_executor, user_question, model_name='Amazon Nova Pro'):
     attempts = 0
     success = False
     queries_attempted = []  # Store queries for each attempt
+    MAX_RETRIALS = int(query_executor.db_manager._config_adapter.get_config('MAX_RETRIALS'))
 
-    while attempts < 1 and not success:
+    while attempts < MAX_RETRIALS and not success:
         start_time = time.time()  # Start the timer
 
         # Gen query
